@@ -147,7 +147,7 @@ Supabase 是项目的"后端"，提供数据库和用户认证。
 -- =============================================
 -- 1. 创建资源表（核心表）
 -- =============================================
-CREATE TABLE resources (
+CREATE TABLE IF NOT EXISTS resources (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   slug TEXT UNIQUE NOT NULL,
   title TEXT NOT NULL,
@@ -169,7 +169,7 @@ CREATE TABLE resources (
 -- =============================================
 -- 2. 创建标签表
 -- =============================================
-CREATE TABLE tags (
+CREATE TABLE IF NOT EXISTS tags (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT UNIQUE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -178,7 +178,7 @@ CREATE TABLE tags (
 -- =============================================
 -- 3. 创建资源-标签关联表
 -- =============================================
-CREATE TABLE resource_tags (
+CREATE TABLE IF NOT EXISTS resource_tags (
   resource_id UUID REFERENCES resources(id) ON DELETE CASCADE,
   tag_id UUID REFERENCES tags(id) ON DELETE CASCADE,
   PRIMARY KEY (resource_id, tag_id)
@@ -187,7 +187,7 @@ CREATE TABLE resource_tags (
 -- =============================================
 -- 4. 创建平台版本表
 -- =============================================
-CREATE TABLE variants (
+CREATE TABLE IF NOT EXISTS variants (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   resource_id UUID REFERENCES resources(id) ON DELETE CASCADE,
   platform TEXT NOT NULL,
@@ -199,7 +199,7 @@ CREATE TABLE variants (
 -- =============================================
 -- 5. 创建事件记录表
 -- =============================================
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   resource_id UUID REFERENCES resources(id) ON DELETE CASCADE,
   event_type TEXT NOT NULL,
@@ -207,35 +207,7 @@ CREATE TABLE events (
 );
 
 -- =============================================
--- 6. 启用行级安全策略（RLS）
--- =============================================
-ALTER TABLE resources ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
-ALTER TABLE resource_tags ENABLE ROW LEVEL SECURITY;
-ALTER TABLE variants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE events ENABLE ROW LEVEL SECURITY;
-
--- =============================================
--- 7. 创建访问策略（允许所有操作）
--- =============================================
-CREATE POLICY "Allow all operations on resources" ON resources FOR ALL USING (true);
-CREATE POLICY "Allow all operations on tags" ON tags FOR ALL USING (true);
-CREATE POLICY "Allow all operations on resource_tags" ON resource_tags FOR ALL USING (true);
-CREATE POLICY "Allow all operations on variants" ON variants FOR ALL USING (true);
-CREATE POLICY "Allow all operations on events" ON events FOR ALL USING (true);
-
--- =============================================
--- 8. 创建索引（提高查询速度）
--- =============================================
-CREATE INDEX idx_resources_title ON resources(title);
-CREATE INDEX idx_resources_type ON resources(type);
-CREATE INDEX idx_resources_status ON resources(status);
-CREATE INDEX idx_tags_name ON tags(name);
-CREATE INDEX idx_variants_resource_id ON variants(resource_id);
-CREATE INDEX idx_events_resource_id ON events(resource_id);
-
--- =============================================
--- 9. 创建用户设置表（用于保存用户偏好）
+-- 6. 创建用户设置表
 -- =============================================
 CREATE TABLE IF NOT EXISTS user_settings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -245,14 +217,104 @@ CREATE TABLE IF NOT EXISTS user_settings (
   openai_api_key TEXT,
   anthropic_api_key TEXT,
   openrouter_api_key TEXT,
+  api_base_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(user_id)
 );
 
-ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+-- =============================================
+-- 7. 创建平台表
+-- =============================================
+CREATE TABLE IF NOT EXISTS platforms (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  icon TEXT,
+  is_default BOOLEAN DEFAULT false,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
+-- =============================================
+-- 8. 创建资源类型表
+-- =============================================
+CREATE TABLE IF NOT EXISTS resource_types (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  icon TEXT,
+  description TEXT,
+  is_default BOOLEAN DEFAULT false,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =============================================
+-- 9. 启用行级安全策略（RLS）
+-- =============================================
+ALTER TABLE resources ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE resource_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE variants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platforms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE resource_types ENABLE ROW LEVEL SECURITY;
+
+-- =============================================
+-- 10. 创建访问策略
+-- =============================================
+CREATE POLICY "Allow all operations on resources" ON resources FOR ALL USING (true);
+CREATE POLICY "Allow all operations on tags" ON tags FOR ALL USING (true);
+CREATE POLICY "Allow all operations on resource_tags" ON resource_tags FOR ALL USING (true);
+CREATE POLICY "Allow all operations on variants" ON variants FOR ALL USING (true);
+CREATE POLICY "Allow all operations on events" ON events FOR ALL USING (true);
 CREATE POLICY "Users can manage own settings" ON user_settings FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Platforms are viewable by everyone" ON platforms FOR SELECT USING (true);
+CREATE POLICY "Authenticated users can manage platforms" ON platforms FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Resource types are viewable by everyone" ON resource_types FOR SELECT USING (true);
+CREATE POLICY "Authenticated users can manage resource types" ON resource_types FOR ALL USING (auth.role() = 'authenticated');
+
+-- =============================================
+-- 11. 创建索引（提高查询速度）
+-- =============================================
+CREATE INDEX IF NOT EXISTS idx_resources_title ON resources(title);
+CREATE INDEX IF NOT EXISTS idx_resources_type ON resources(type);
+CREATE INDEX IF NOT EXISTS idx_resources_status ON resources(status);
+CREATE INDEX IF NOT EXISTS idx_resources_slug ON resources(slug);
+CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
+CREATE INDEX IF NOT EXISTS idx_variants_resource_id ON variants(resource_id);
+CREATE INDEX IF NOT EXISTS idx_variants_platform ON variants(platform);
+CREATE INDEX IF NOT EXISTS idx_events_resource_id ON events(resource_id);
+CREATE INDEX IF NOT EXISTS idx_events_event_type ON events(event_type);
+CREATE INDEX IF NOT EXISTS idx_platforms_sort_order ON platforms(sort_order);
+CREATE INDEX IF NOT EXISTS idx_platforms_slug ON platforms(slug);
+CREATE INDEX IF NOT EXISTS idx_resource_types_sort_order ON resource_types(sort_order);
+CREATE INDEX IF NOT EXISTS idx_resource_types_slug ON resource_types(slug);
+
+-- =============================================
+-- 12. 插入默认平台数据
+-- =============================================
+INSERT INTO platforms (name, slug, icon, is_default, sort_order) VALUES
+  ('ChatGPT', 'chatgpt', '🤖', true, 1),
+  ('Cursor', 'cursor', '⚡', true, 2),
+  ('Claude', 'claude', '🧠', true, 3),
+  ('Dify', 'dify', '🔧', true, 4),
+  ('Coze', 'coze', '🎯', true, 5),
+  ('Notion', 'notion', '📝', true, 6),
+  ('通用', 'generic', '📦', true, 7)
+ON CONFLICT (slug) DO NOTHING;
+
+-- =============================================
+-- 13. 插入默认资源类型数据
+-- =============================================
+INSERT INTO resource_types (name, slug, icon, description, is_default, sort_order) VALUES
+  ('Agent', 'agent', '🤖', '智能代理，可自主执行复杂任务', true, 1),
+  ('Skill', 'skill', '⚡', '技能模块，提供特定功能能力', true, 2),
+  ('Prompt', 'prompt', '💬', '提示词模板，用于 AI 对话', true, 3),
+  ('Workflow', 'workflow', '🔄', '工作流程，多步骤自动化任务', true, 4)
+ON CONFLICT (slug) DO NOTHING;
 ```
 
 看到 "Success! No rows returned" 即表示执行成功。
