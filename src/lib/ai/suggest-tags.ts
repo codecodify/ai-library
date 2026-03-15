@@ -37,7 +37,7 @@ ${existingStr}
       const data = await response.json()
       const text = data.choices?.[0]?.message?.content?.trim() || ''
       
-      return text.split(',').map(t => t.trim()).filter(Boolean).slice(0, 5)
+      return text.split(',').map((t: string) => t.trim()).filter(Boolean).slice(0, 5)
     }
     
     if (config.provider === 'anthropic') {
@@ -58,7 +58,7 @@ ${existingStr}
       const data = await response.json()
       const text = data.content?.[0]?.text?.trim() || ''
       
-      return text.split(',').map(t => t.trim()).filter(Boolean).slice(0, 5)
+      return text.split(',').map((t: string) => t.trim()).filter(Boolean).slice(0, 5)
     }
     
     return []

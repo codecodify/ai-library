@@ -1,19 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createVariant, updateVariant, deleteVariant } from '@/app/actions'
-import { Variant, Platform } from '@/types/resource'
+import { Variant, PlatformData } from '@/types/resource'
 
 interface VariantManagerProps {
   resourceId: string
   variants: Variant[]
+  platforms: PlatformData[]
 }
 
-const PLATFORMS: Platform[] = ['chatgpt', 'cursor', 'claude', 'dify', 'coze', 'notion', 'generic']
-
-export function VariantManager({ resourceId, variants }: VariantManagerProps) {
+export function VariantManager({ resourceId, variants, platforms: initialPlatforms }: VariantManagerProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [platforms, setPlatforms] = useState<PlatformData[]>(initialPlatforms)
+  
+  useEffect(() => {
+    fetch('/api/platforms')
+      .then(res => res.json())
+      .then(data => setPlatforms(data))
+      .catch(console.error)
+  }, [])
   
   return (
     <div className="space-y-4">
@@ -42,8 +49,8 @@ export function VariantManager({ resourceId, variants }: VariantManagerProps) {
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
           >
             <option value="">选择平台</option>
-            {PLATFORMS.map(p => (
-              <option key={p} value={p}>{p}</option>
+            {platforms.map(p => (
+              <option key={p.id} value={p.slug}>{p.icon ? `${p.icon} ` : ''}{p.name}</option>
             ))}
           </select>
           <textarea
@@ -85,8 +92,8 @@ export function VariantManager({ resourceId, variants }: VariantManagerProps) {
                 defaultValue={variant.platform}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
-                {PLATFORMS.map(p => (
-                  <option key={p} value={p}>{p}</option>
+                {platforms.map(p => (
+                  <option key={p.id} value={p.slug}>{p.icon ? `${p.icon} ` : ''}{p.name}</option>
                 ))}
               </select>
               <textarea
@@ -114,7 +121,12 @@ export function VariantManager({ resourceId, variants }: VariantManagerProps) {
           ) : (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="font-medium text-gray-900">{variant.platform}</span>
+                <span className="font-medium text-gray-900">
+                  {platforms.find(p => p.slug === variant.platform)?.icon && (
+                    <span className="mr-1">{platforms.find(p => p.slug === variant.platform)?.icon}</span>
+                  )}
+                  {platforms.find(p => p.slug === variant.platform)?.name || variant.platform}
+                </span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setEditingId(variant.id)}

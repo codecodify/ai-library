@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { revalidatePath } from 'next/cache'
+import { toggleFavorite } from '@/app/actions'
 
 interface FavoriteButtonProps {
   resourceId: string
@@ -12,7 +11,6 @@ interface FavoriteButtonProps {
 export function FavoriteButton({ resourceId, isFavorite: initialFavorite }: FavoriteButtonProps) {
   const [isFavorite, setIsFavorite] = useState(initialFavorite)
   const [loading, setLoading] = useState(false)
-  const supabase = createClient()
   
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -23,16 +21,8 @@ export function FavoriteButton({ resourceId, isFavorite: initialFavorite }: Favo
     
     const newFavorite = !isFavorite
     
-    const { error } = await supabase
-      .from('resources')
-      .update({ is_favorite: newFavorite })
-      .eq('id', resourceId)
-    
-    if (!error) {
-      setIsFavorite(newFavorite)
-      revalidatePath('/')
-      revalidatePath('/resources')
-    }
+    await toggleFavorite(resourceId, newFavorite)
+    setIsFavorite(newFavorite)
     
     setLoading(false)
   }

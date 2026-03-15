@@ -297,6 +297,8 @@ export async function saveUserSettings(supabase: any, settings: {
   openai_api_key?: string
   anthropic_api_key?: string
   openrouter_api_key?: string
+  api_base_url?: string
+  selected_platform?: string
 }) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }

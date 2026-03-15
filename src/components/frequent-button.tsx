@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { revalidatePath } from 'next/cache'
+import { toggleFrequent } from '@/app/actions'
 
 interface FrequentButtonProps {
   resourceId: string
@@ -12,7 +11,6 @@ interface FrequentButtonProps {
 export function FrequentButton({ resourceId, isFrequent: initialFrequent }: FrequentButtonProps) {
   const [isFrequent, setIsFrequent] = useState(initialFrequent)
   const [loading, setLoading] = useState(false)
-  const supabase = createClient()
   
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -23,16 +21,8 @@ export function FrequentButton({ resourceId, isFrequent: initialFrequent }: Freq
     
     const newFrequent = !isFrequent
     
-    const { error } = await supabase
-      .from('resources')
-      .update({ is_frequent: newFrequent })
-      .eq('id', resourceId)
-    
-    if (!error) {
-      setIsFrequent(newFrequent)
-      revalidatePath('/')
-      revalidatePath('/resources')
-    }
+    await toggleFrequent(resourceId, newFrequent)
+    setIsFrequent(newFrequent)
     
     setLoading(false)
   }

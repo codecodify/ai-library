@@ -1,10 +1,7 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
 import { UserMenu } from '@/components/user-menu'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'AI Agent / Skills Library',
@@ -17,8 +14,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN">
-      <body className={inter.className}>
+    <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      </head>
+      <body className="font-sans" suppressHydrationWarning>
         <div className="min-h-screen bg-gray-50">
           <nav className="bg-white border-b border-gray-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -52,7 +54,7 @@ export default function RootLayout({
                   <UserMenu />
                   <Link
                     href="/resources/new"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                    className="ml-6 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
                   >
                     新增资源
                   </Link>

@@ -1,51 +1,29 @@
-import { notFound } from 'next/navigation'
-import { updateResource, deleteResource } from '@/app/actions'
-import { createClient } from '@/lib/supabase/server'
-import { VariantManager } from '@/components/resource/variant-manager'
+'use client'
+
+import { createResourceWithVariants } from '@/app/actions'
 import { AIEnhanceButton } from '@/components/ai-enhance-button'
+import { PlatformSelector } from '@/components/platform-selector'
+import { useState } from 'react'
+import type { PlatformData, ResourceTypeData } from '@/types/resource'
 
-export default async function EditResourcePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>
-}) {
-  const { slug } = await params
-  const supabase = await createClient()
-  
-  const { data: resource } = await supabase
-    .from('resources')
-    .select('*')
-    .eq('slug', slug)
-    .single()
-  
-  if (!resource) {
-    notFound()
-  }
+interface NewResourcePageClientProps {
+  platforms: PlatformData[]
+  resourceTypes: ResourceTypeData[]
+}
 
-  const { data: variants } = await supabase
-    .from('variants')
-    .select('*')
-    .eq('resource_id', resource.id)
+export default function NewResourcePageClient({ platforms, resourceTypes }: NewResourcePageClientProps) {
+  const [summary, setSummary] = useState('')
+  const [tags, setTags] = useState('')
+  const [content, setContent] = useState('')
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(
+    platforms.filter(p => p.is_default).map(p => p.slug)
+  )
 
-  const { data: platforms } = await supabase
-    .from('platforms')
-    .select('*')
-    .order('sort_order', { ascending: true })
-
-  const { data: resourceTypes } = await supabase
-    .from('resource_types')
-    .select('*')
-    .order('sort_order', { ascending: true })
-
-  const deleteAction = deleteResource.bind(null, resource.id)
-  
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">编辑资源</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">新增资源</h1>
       
-      <form action={updateResource.bind(null, resource.id)} className="space-y-6">
-        <input type="hidden" name="slug" value={resource.slug} />
-        
+      <form action={createResourceWithVariants} className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             名称 *
@@ -54,7 +32,6 @@ export default async function EditResourcePage({
             type="text"
             name="title"
             required
-            defaultValue={resource.title}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -66,7 +43,6 @@ export default async function EditResourcePage({
           <input
             type="text"
             name="slug"
-            defaultValue={resource.slug}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -78,25 +54,42 @@ export default async function EditResourcePage({
           <select
             name="type"
             required
-            defaultValue={resource.type}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            {resourceTypes?.map((type) => (
-              <option key={type.id} value={type.slug}>
-                {type.name}
+            {resourceTypes.map(rt => (
+              <option key={rt.id} value={rt.slug}>
+                {rt.icon ? `${rt.icon} ` : ''}{rt.name}
               </option>
             ))}
           </select>
         </div>
+
+        <PlatformSelector
+          platforms={platforms}
+          selectedPlatforms={selectedPlatforms}
+          onChange={setSelectedPlatforms}
+        />
+        
+        {selectedPlatforms.map(slug => (
+          <input key={slug} type="hidden" name="platforms" value={slug} />
+        ))}
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            简介
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-gray-700">
+              简介
+            </label>
+            <AIEnhanceButton
+              type="summary"
+              content={content}
+              onResult={(result) => setSummary(result)}
+            />
+          </div>
           <input
             type="text"
             name="summary"
-            defaultValue={resource.summary || ''}
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -108,7 +101,6 @@ export default async function EditResourcePage({
           <textarea
             name="description"
             rows={4}
-            defaultValue={resource.description || ''}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -120,8 +112,30 @@ export default async function EditResourcePage({
           <textarea
             name="content"
             rows={8}
-            defaultValue={resource.content || ''}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+          />
+        </div>
+        
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-gray-700">
+              标签（用逗号分隔）
+            </label>
+            <AIEnhanceButton
+              type="tags"
+              content={content}
+              onResult={(result) => setTags(result)}
+            />
+          </div>
+          <input
+            type="text"
+            name="tags"
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+            placeholder="ai, productivity, coding"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         
@@ -132,7 +146,6 @@ export default async function EditResourcePage({
           <input
             type="url"
             name="source_url"
-            defaultValue={resource.source_url || ''}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -143,7 +156,6 @@ export default async function EditResourcePage({
           </label>
           <select
             name="status"
-            defaultValue={resource.status}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="published">已发布</option>
@@ -152,50 +164,21 @@ export default async function EditResourcePage({
           </select>
         </div>
         
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="is_favorite"
-              value="true"
-              defaultChecked={resource.is_favorite}
-              className="rounded"
-            />
-            <span className="text-sm text-gray-700">收藏</span>
-          </label>
-        </div>
-        
         <div className="flex gap-4">
           <button
             type="submit"
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            保存
+            创建
           </button>
           <a
-            href={`/resources/${slug}`}
+            href="/resources"
             className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
           >
             取消
           </a>
-          <button
-            type="submit"
-            formAction={deleteAction}
-            onClick={(e) => {
-              if (!confirm('确定要删除这个资源吗？')) {
-                e.preventDefault()
-              }
-            }}
-            className="px-6 py-2 text-red-600 border border-red-300 rounded-md hover:bg-red-50"
-          >
-            删除
-          </button>
         </div>
       </form>
-      
-      <div className="mt-8 pt-8 border-t border-gray-200">
-        <VariantManager resourceId={resource.id} variants={variants || []} platforms={platforms || []} />
-      </div>
     </div>
   )
 }

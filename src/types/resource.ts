@@ -1,6 +1,6 @@
-export type ResourceType = 'agent' | 'skill' | 'prompt' | 'workflow'
+export type ResourceType = string
 export type ResourceStatus = 'draft' | 'published' | 'archived'
-export type Platform = 'chatgpt' | 'cursor' | 'claude' | 'dify' | 'coze' | 'notion' | 'generic'
+export type Platform = string
 
 export interface Resource {
   id: string
@@ -50,4 +50,25 @@ export interface Event {
 export interface ResourceWithTags extends Resource {
   tags: Tag[]
   variants: Variant[]
+}
+
+export interface PlatformData {
+  id: string
+  name: string
+  slug: string
+  icon: string | null
+  is_default: boolean
+  sort_order: number
+  created_at: string
+}
+
+export interface ResourceTypeData {
+  id: string
+  name: string
+  slug: string
+  icon: string | null
+  description: string | null
+  is_default: boolean
+  sort_order: number
+  created_at: string
 }
